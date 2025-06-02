@@ -90,22 +90,21 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn spawn_player(mut commands: Commands) {
+fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         SpriteBundle {
+            texture: asset_server.load("player.png"),
+            transform: Transform::from_xyz(0.0, -200.0, 0.0),
             sprite: Sprite {
-                color: Color::rgb(0.3, 0.8, 1.0),
                 custom_size: Some(Vec2::new(50.0, 20.0)),
                 ..default()
             },
-            transform: Transform::from_xyz(0.0, -200.0, 0.0),
             ..default()
         },
         Player,
     ));
 }
-
-fn spawn_enemies(mut commands: Commands) {
+fn spawn_enemies(mut commands: Commands, asset_server: Res<AssetServer>) {
     let rows = 5;
     let cols = 8;
     let spacing = Vec2::new(60.0, 40.0);
@@ -119,12 +118,12 @@ fn spawn_enemies(mut commands: Commands) {
 
             commands.spawn((
                 SpriteBundle {
+                    texture: asset_server.load("enemy2.png"),
+                    transform: Transform::from_xyz(x, y, 0.0),
                     sprite: Sprite {
-                        color: Color::rgb(1.0, 0.4, 0.4),
                         custom_size: Some(Vec2::new(40.0, 20.0)),
                         ..default()
                     },
-                    transform: Transform::from_xyz(x, y, 0.0),
                     ..default()
                 },
                 Enemy,
@@ -361,7 +360,9 @@ fn enemy_bullet_player_collision(
     player_query: Query<(Entity, &Transform, &Sprite), With<Player>>,
     mut game_over: ResMut<GameOver>,
     mut lives: ResMut<PlayerLives>,
+    asset_server: Res<AssetServer>
 ) {
+    let mut collision_detected = false;
     for (bullet_entity, bullet_tf, _bullet_sprite) in bullet_query.iter() {
         let bullet_pos = bullet_tf.translation;
         for (player_entity, player_tf, player_sprite) in player_query.iter() {
@@ -374,29 +375,22 @@ fn enemy_bullet_player_collision(
             if collision {
                 commands.entity(bullet_entity).despawn();
                 commands.entity(player_entity).despawn();
-                if lives.0 > 1 {
-                    lives.0 -= 1;
-                    println!("You were hit! Lives left: {}", lives.0);
-                    // Respawn player
-                    commands.spawn((
-                        SpriteBundle {
-                            sprite: Sprite {
-                                color: Color::rgb(0.3, 0.8, 1.0),
-                                custom_size: Some(Vec2::new(50.0, 20.0)),
-                                ..default()
-                            },
-                            transform: Transform::from_xyz(0.0, -200.0, 0.0),
-                            ..default()
-                        },
-                        Player,
-                    ));
-                } else {
-                    lives.0 -= 1;
-                    game_over.0 = true;
-                    println!("You were hit! Game Over!");
-                }
+                collision_detected = true;
                 break;
             }
+        }
+    }
+
+    if collision_detected {
+        if lives.0 > 1 {
+            lives.0 -= 1;
+            println!("You were hit! Lives left: {}", lives.0);
+            // Respawn player
+            spawn_player(commands.reborrow(), asset_server);
+        } else {
+            lives.0 -= 1;
+            game_over.0 = true;
+            println!("You were hit! Game Over!");
         }
     }
 }
@@ -421,7 +415,7 @@ fn game_over_screen(
                             TextStyle {
                                 font: asset_server.load("fonts/FiraSans-Bold.ttf"),
                                 font_size: 60.0,
-                                color: Color::RED,
+                                color: Color::GREEN,
                             },
                         ),
                         style: Style {
@@ -476,6 +470,8 @@ fn restart_game(
     enemy_bullet_query: Query<Entity, With<EnemyBullet>>,
     player_query: Query<Entity, With<Player>>,
     mut enemy_speed: ResMut<EnemySpeed>,
+    asset_server: Res<AssetServer>,
+    asset_server2: Res<AssetServer>,
 ) {
     if game_over.0 && keyboard_input.just_pressed(KeyCode::KeyR) {
         for entity in enemy_query.iter() { commands.entity(entity).despawn(); }
@@ -487,8 +483,8 @@ fn restart_game(
         level.0 = 1;
         game_over.0 = false;
         enemy_speed.0 = ENEMY_SPEED;
-        spawn_player(commands.reborrow());
-        spawn_enemies(commands.reborrow());
+        spawn_player(commands.reborrow(), asset_server);
+        spawn_enemies(commands.reborrow(), asset_server2);
     }
 }
 
@@ -608,9 +604,11 @@ fn next_level(
     bullet_query: Query<Entity, With<Bullet>>,
     enemy_bullet_query: Query<Entity, With<EnemyBullet>>,
     player_query: Query<Entity, With<Player>>,
+    asset_server: Res<AssetServer>,
+    asset_server2: Res<AssetServer>,
 ) {
     // Only allow next level if all enemies are gone and game_over is true
-    if game_over.0 && enemy_query.iter().next().is_none() && keyboard_input.just_pressed(KeyCode::KeyN) {
+    if enemy_query.iter().next().is_none() && keyboard_input.just_pressed(KeyCode::KeyN) {
         // Clean up
         for entity in bullet_query.iter() { 
             commands.entity(entity).despawn(); 
@@ -621,11 +619,12 @@ fn next_level(
         for entity in player_query.iter() { 
             commands.entity(entity).despawn(); 
         }
+        
         level.0 += 1;
         enemy_speed.0 += 50.0;
         game_over.0 = false;
-        spawn_player(commands.reborrow());
-        spawn_enemies(commands.reborrow());
+        spawn_player(commands.reborrow(), asset_server);
+        spawn_enemies(commands.reborrow(), asset_server2);
     }
 }
 
