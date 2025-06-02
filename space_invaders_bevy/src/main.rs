@@ -407,49 +407,32 @@ fn game_over_screen(
             commands.entity(entity).despawn();
         }
         if game_over.0 {
+            let mut message = "GAME OVER\nPress R to Restart";
+            let mut color = Color::RED;
             if enemy_query.iter().next().is_none() {
-                commands.spawn((
-                    TextBundle {
-                        text: Text::from_section(
-                            "YOU WIN!\nPress N for Next Level",
-                            TextStyle {
-                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                font_size: 60.0,
-                                color: Color::GREEN,
-                            },
-                        ),
-                        style: Style {
-                            position_type: PositionType::Absolute,
-                            left: Val::Percent(25.0),
-                            top: Val::Percent(40.0),
-                            ..default()
+                message ="YOU WIN!\nPress N for Next Level";
+                color = Color::GREEN;
+            }
+            commands.spawn((
+                TextBundle {
+                    text: Text::from_section(
+                        message,
+                        TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.ttf"),
+                            font_size: 60.0,
+                            color: color,
                         },
+                    ),
+                    style: Style {
+                        position_type: PositionType::Absolute,
+                        left: Val::Percent(25.0),
+                        top: Val::Percent(40.0),
                         ..default()
                     },
-                    GameOverText,
-                ));
-            } else {
-                commands.spawn((
-                    TextBundle {
-                        text: Text::from_section(
-                            "GAME OVER\nPress R to Restart",
-                            TextStyle {
-                                font: asset_server.load("fonts/FiraSans-Bold.ttf"),
-                                font_size: 60.0,
-                                color: Color::RED,
-                            },
-                        ),
-                        style: Style {
-                            position_type: PositionType::Absolute,
-                            left: Val::Percent(25.0),
-                            top: Val::Percent(40.0),
-                            ..default()
-                        },
-                        ..default()
-                    },
-                    GameOverText,
-                ));
-         }
+                    ..default()
+                },
+                GameOverText,
+            ));
         } else {
             for entity in game_over_text_query.iter_mut() {
                 commands.entity(entity).despawn();
